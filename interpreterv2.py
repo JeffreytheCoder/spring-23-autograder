@@ -42,11 +42,13 @@ def create_val(type, val):
 
 
 def is_valid_assign(var_type: str, val_type: str, val_value: any):
-    print(var_type, val_type, val_value)
+    # print(var_type, val_type, val_value)
+
     same_declared_types = var_type == val_type
     obj_assign_null = var_type not in primitives and val_type not in primitives and val_type == "null"
     obj_assign_family = var_type not in primitives and val_type not in primitives and val_value is not None and var_type in val_value.family
-    print(same_declared_types, obj_assign_null, obj_assign_family)
+    # print(same_declared_types, obj_assign_null, obj_assign_family)
+
     return same_declared_types or obj_assign_null or obj_assign_family
 
 
@@ -208,7 +210,7 @@ class Object():
 
     def __evaluate(self, expression: list, method: Method, actual_me=None):
         operator = expression[0]
-        print(expression)
+        # print(expression)
 
         if operator == self.interpreter.NEW_DEF:
             class_name = expression[1]
@@ -220,7 +222,6 @@ class Object():
 
         elif operator == self.interpreter.CALL_DEF:
             res = self.__run_call_statement(expression[1:], method, actual_me)
-            # print(res)
             return res
 
         elif operator == '!':
@@ -264,7 +265,8 @@ class Object():
                     else:
                         self.interpreter.error(ErrorType.TYPE_ERROR)
 
-            # check primitives
+            # compare primitives
+            # check primitives are comparable
             if not (self.__is_operand_same_type(val1, val2)
                     and self.__is_operand_compatible(operator, val1)):
                 self.interpreter.error(ErrorType.TYPE_ERROR)
@@ -289,8 +291,6 @@ class Object():
             elif operator == '|':
                 python_operator = 'or'
 
-            # print(val1.type, val1.value, type(val1.value),
-            #       val2.type, val2.value, type(val2.value))
             python_expression = f"{repr(val1.value)} {python_operator} {repr(val2.value)}"
             eval_res = eval(python_expression)
 
@@ -313,7 +313,7 @@ class Object():
         elif statement_type == self.interpreter.BEGIN_DEF:
             for stmt in args:
                 res = self.__run_statement(stmt, method, actual_me)
-                if res == "return now!" or res is not None:
+                if res is not None:
                     return res
         elif statement_type == self.interpreter.IF_DEF:
             res = self.__run_if_statement(args, method, actual_me)
@@ -339,7 +339,6 @@ class Object():
             # print(arg, arg_val.value if arg_val else None, arg_val.type if arg_val else None, type(arg_val.value))
 
             # convert primitive types to string
-
             if arg_val is None:
                 output += "None"
             else:
@@ -355,7 +354,6 @@ class Object():
             # print(arg, arg_val.value if arg_val else None, arg_val.type if arg_val else None, type(arg_val.value))
 
         # print("print: " + output)
-
         self.interpreter.output(output)
 
     def __run_input_int_statement(self, args: list, method: Method):
@@ -399,6 +397,7 @@ class Object():
 
         val_obj = self.__get_val(val, method)
 
+        # get variable object to be set to the value object
         var_obj = None
         for local_var in method.local_vars:
             if var == local_var.name:
@@ -413,38 +412,26 @@ class Object():
             else:
                 self.interpreter.error(ErrorType.NAME_ERROR)
 
-        # print(val_obj.type, val_obj.value)
-        # if val_obj.type != "obj":
-        #     is_same_family = True
-        # else:
-        #     family = self.interpreter.classes[var_obj.type].family
-        #     print(val_obj.value.family[0], family)
-        #     is_same_family = val_obj.type in self.interpreter.classes[var_obj.type].family
-
-        # if not is_same_family:
-        #     self.interpreter.error(ErrorType.TYPE_ERROR)
-
-        print(var_obj.name, var_obj.type, val_obj.type, val_obj.value)
+        # print(var_obj.name, var_obj.type, val_obj.type, val_obj.value)
+        # check if valid set
         if not is_valid_assign(var_obj.type, val_obj.type, val_obj.value):
             self.interpreter.error(ErrorType.TYPE_ERROR)
             return None
 
-        # print(var_obj.type, val_obj.type, val_obj.value)
         var_obj.set_val(val_obj)
-
-        return method.params
 
     def __run_if_statement(self, args: list, method: Method, actual_me=None):
         condition, *statements = args
 
+        # evaluate condition and check if bool
         condition_val = self.__get_val(condition, method)
         if condition_val.type != "bool":
             self.interpreter.error(ErrorType.TYPE_ERROR)
 
         res = None
-        if condition_val.value:
+        if condition_val.value:  # run if statement
             res = self.__run_statement(statements[0], method, actual_me)
-        elif len(statements) > 1:
+        elif len(statements) > 1:  # run else statement
             res = self.__run_statement(statements[1], method, actual_me)
 
         return res
@@ -454,17 +441,18 @@ class Object():
 
         res = None
         while True:
+            # evaluate condition and check if bool
             condition_val = self.__get_val(condition, method)
-
             if condition_val.type != "bool":
                 self.interpreter.error(ErrorType.TYPE_ERROR)
 
+            # break loop if condition unsatisfied
             if not condition_val.value:
                 break
 
             res = self.__run_statement(statement, method, actual_me)
-            print(res, res is not None)
-            if res == "return now!" or res is not None:
+            # break loop from inside return statement
+            if res is not None:
                 return res
 
         return res
@@ -473,6 +461,7 @@ class Object():
         obj_name, method_name, *method_arg_names = args
         # print("actual_me: " + actual_me.name if actual_me else "")
 
+        # evaluate which object to call
         obj = None
         if isinstance(obj_name, list):
             obj = self.__evaluate(obj_name, method, actual_me).value
@@ -503,9 +492,7 @@ class Object():
         return obj.call_method(method_name, method_args, actual_me if actual_me else obj)
 
     def __run_return_statement(self, args: list, method: Method, actual_me=None):
-        # default return
-        print(method.return_type)
-        if len(args) == 0:
+        if len(args) == 0:  # default return
             if method.return_type == "void":
                 # TODO: might need to change back to return nothing
                 return Value("null", None)
@@ -520,17 +507,17 @@ class Object():
             self.interpreter.error(ErrorType.TYPE_ERROR)
 
         return_val = self.__get_val(args[0], method)
-
+        # assign value of null to return_type class
         if return_val.value is None:
             return_val.type = method.return_type
 
         # print("returning:")
         # print(return_val.type, return_val.value)
 
+        # check if return type fits method return type
         if not is_valid_assign(method.return_type, return_val.type, return_val.value):
             self.interpreter.error(ErrorType.TYPE_ERROR)
 
-        # print("returning" + str(return_val.value))
         return return_val
 
     def __run_let_statement(self, args: list, method: Method, actual_me=None):
@@ -540,14 +527,17 @@ class Object():
 
         for var in vars:
             var_type, var_name, var_val = var
+
+            # check if duplicate let vars
             if var_name in added_var_names:
                 self.interpreter.error(ErrorType.NAME_ERROR)
 
             val_obj = self.__get_val(var_val, method)
-
+            # assign null value with declared class type
             if val_obj.type == "null":
                 val_obj.type = var_type
 
+            # check if value fits declared type
             if not is_valid_assign(var_type, val_obj.type, val_obj.value):
                 self.interpreter.error(ErrorType.TYPE_ERROR)
 
@@ -557,7 +547,7 @@ class Object():
 
         for stmt in statements:
             res = self.__run_statement(stmt, method, actual_me)
-            if res == "return now!" or res is not None:
+            if res is not None:
                 return res
 
         for i in range(insert_len):
@@ -612,18 +602,23 @@ class Interpreter(InterpreterBase):
                 if item[0] == self.FIELD_DEF:
                     field_def, field_type, name, val = item
 
+                    # check duplicate field
                     if name in fields:
                         self.error(ErrorType.NAME_ERROR)
 
+                    # check if init value is valid
                     if isinstance(val, list):
                         self.error(ErrorType.TYPE_ERROR)
 
                     field_val = create_val(field_type, val)
+
+                    # check if value fits declared type
                     valid_assign = field_type == field_val.type
                     if not valid_assign:
                         self.error(ErrorType.TYPE_ERROR)
 
                     fields[name] = Variable(name, field_type, field_val)
+
                 elif item[0] == self.METHOD_DEF:
                     method_def, return_type, name, params, body = item
 

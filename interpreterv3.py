@@ -22,7 +22,7 @@ def concat_str(s: str):
     return s[1:-1]
 
 
-def create_val(val):
+def create_val(type, val):
     """
     Convert a Brewin value to a Value object with type and Python value
     """
@@ -35,34 +35,21 @@ def create_val(val):
     if val.lstrip('-').isnumeric():
         return Value("int", int(val))
     if val == InterpreterBase.NULL_DEF:
-        return Value("obj", None)
+        return Value(type, None)
     if val == InterpreterBase.NOTHING_DEF:
         return Value("nothing", None)
     return None
 
 
-def get_type(val):
-    """
-    Convert a Brewin value to a Value object with type and Python value
-    """
-    if val == InterpreterBase.TRUE_DEF:
-        return "bool"
-    if val == InterpreterBase.FALSE_DEF:
-        return "bool"
-    if val[0] == '"':
-        return "string"
-    if val.lstrip('-').isnumeric():
-        return "int"
-    if val == InterpreterBase.NULL_DEF:
-        return "obj"
-    if val == InterpreterBase.NOTHING_DEF:
-        return "nothing"
-    return None
-
-
 def is_valid_assign(var_type: str, val_type: str, val_value: any):
-    primitives = ["bool", "string", "int"]
-    return var_type == val_type or (var_type not in primitives and val_value is None) or (val_type == "obj" and val_value is not None and var_type in val_value.family)
+    # print(var_type, val_type, val_value)
+
+    same_declared_types = var_type == val_type
+    obj_assign_null = var_type not in primitives and val_type not in primitives and val_type == "null"
+    obj_assign_family = var_type not in primitives and val_type not in primitives and val_value is not None and var_type in val_value.family
+    # print(same_declared_types, obj_assign_null, obj_assign_family)
+
+    return same_declared_types or obj_assign_null or obj_assign_family
 
 
 class Value():
@@ -114,15 +101,63 @@ class Object():
         self.fields = copy.deepcopy(class_ref.fields)
         self.methods = copy.deepcopy(class_ref.methods)
 
-    def __get_var(self, var_name: str, method: Method) -> Variable:
-        print(var_name, method.params)
-        if var_name == "me":
-            return Value("obj", self)
-        if var_name in method.params:
-            return method.params[var_name]
-        if var_name in self.fields:
-            return self.fields[var_name]
-        return None
+    def call_method(self, method_name: str, args: List[Value], actual_me=None):
+        # find the most derived method in current class or super class
+        # check same arg number for overloading
+        method = None
+        if method_name in self.methods and len(args) == len(self.methods[method_name].params_list):
+            # print(method_name, "have method!")
+            method = copy.deepcopy(self.methods[method_name])
+
+            # check if all same param, arg types
+            for i, arg in enumerate(args):
+                param_var = method.params_list[i]
+
+                if not is_valid_assign(param_var.type, arg.type, arg.value):
+                    method = None
+                    break
+
+        # check parent class for inherited methods
+        if not method:
+            if self.parent:
+                # print(method_name, "check parent!")
+                res = self.parent.call_method(method_name, args, actual_me)
+                return res
+            else:
+                self.interpreter.error(ErrorType.NAME_ERROR)
+
+        # check if same number of params
+        if len(args) != len(method.params_list):
+            self.interpreter.error(ErrorType.TYPE_ERROR)
+            return None
+
+        # create (param_name, arg_var) pair in method.params dictionary
+        for i, arg in enumerate(args):
+            param_var = method.params_list[i]
+
+            # check duplicate param name
+            if param_var.name in method.params:
+                self.interpreter.error(ErrorType.NAME_ERROR)
+
+            # deep copy primitive param
+            if param_var.type in primitives:
+                param_var = copy.deepcopy(param_var)
+
+            # check if arg type match param type
+            if not is_valid_assign(param_var.type, arg.type, arg.value):
+                self.interpreter.error(ErrorType.TYPE_ERROR)
+                return None
+
+            # assign value object to param var
+            if param_var.type in primitives:
+                param_var.set_val(copy.deepcopy(arg))
+            else:
+                param_var.set_val(arg)
+
+            method.params[param_var.name] = param_var
+
+        res = self.__run_statement(method.body, method, actual_me)
+        return res
 
     def __get_val(self, var: any, method: Method) -> Value:
         if isinstance(var, list):
@@ -139,7 +174,7 @@ class Object():
             return Value("string", concat_str(var))
         if var == "null":
             # print("null")
-            return Value("obj", None)
+            return Value("null", None)
 
         for local_var in method.local_vars:
             if var == local_var.name:
@@ -151,11 +186,10 @@ class Object():
             return method.params[var].val_obj
         if var in self.fields:
             # print("field")
-            # print(self.fields[var].val_obj.type, self.fields[var].val_obj.value, type(self.fields[var].val_obj.value))
             return self.fields[var].val_obj
         if var == "me":
             # print("me")
-            return Value("obj", self)
+            return Value(self.name, self)
 
         self.interpreter.error(ErrorType.NAME_ERROR)
 
@@ -184,11 +218,10 @@ class Object():
             if class_name not in self.interpreter.classes:
                 self.interpreter.error(ErrorType.TYPE_ERROR)
 
-            return Value("obj", self.interpreter.classes[class_name].instantiate_object())
+            return Value(class_name, self.interpreter.classes[class_name].instantiate_object())
 
         elif operator == self.interpreter.CALL_DEF:
             res = self.__run_call_statement(expression[1:], method, actual_me)
-            # print(res)
             return res
 
         elif operator == '!':
@@ -198,43 +231,33 @@ class Object():
 
             return Value("bool", not val.value)
         else:
-            # print(expression[1])
             val1, val2 = self.__get_val(
                 expression[1], method), self.__get_val(expression[2], method)
             # print(val1.type, val1.value, val2.type, val2.value)
-            # print(val1.type, val1.value, type(val1.value), val2.type, val2.value, type(val2.value))
 
-            # compare none
-            if (val1.type == "obj" and val2.type == "obj"):
-                # check if two objects are in same family
-                var1, var2 = self.__get_var(
-                    expression[1], method), self.__get_var(expression[2], method)
-                if not var1 or not var2:
-                    is_same_family = True
-                else:
-                    family1 = self.interpreter.classes[var1.type].family
-                    family2 = self.interpreter.classes[var2.type].family
-                    is_same_family = var1.type in family2 or var2.type in family1
-
-                if not is_same_family:
-                    self.interpreter.error(ErrorType.TYPE_ERROR)
-
-                if (val1.value is None and val2.value is None):
+            # compare objects & nulls
+            if (val1.type not in primitives and val2.type not in primitives):
+                if val1.type == "null":
                     if operator == '==':
-                        return Value("bool", True)
+                        return Value("bool", val2.value is None)
                     elif operator == '!=':
-                        return Value("bool", False)
+                        return Value("bool", val2.value is not None)
                     else:
                         self.interpreter.error(ErrorType.TYPE_ERROR)
-                elif ((val1.value is None and val2.type == "obj")
-                        or (val2.value is None and val1.type == "obj")):
+                elif val2.type == "null":
                     if operator == '==':
-                        return Value("bool", False)
+                        return Value("bool", val1.value is None)
                     elif operator == '!=':
-                        return Value("bool", True)
+                        return Value("bool", val1.value is not None)
                     else:
                         self.interpreter.error(ErrorType.TYPE_ERROR)
-                else:
+                else:  # both class
+                    # check if two classes are comparable
+                    val1_family = self.interpreter.classes[val1.type].family
+                    val2_family = self.interpreter.classes[val2.type].family
+                    if val1.type != val2.type and val1.type not in val2_family and val2.type not in val1_family:
+                        self.interpreter.error(ErrorType.TYPE_ERROR)
+
                     if operator == '==':
                         return Value("bool", val1.value is val2.value)
                     elif operator == '!=':
@@ -242,7 +265,8 @@ class Object():
                     else:
                         self.interpreter.error(ErrorType.TYPE_ERROR)
 
-            # print(self.__is_operand_same_type(val1, val2), self.__is_operand_compatible(operator, val1))
+            # compare primitives
+            # check primitives are comparable
             if not (self.__is_operand_same_type(val1, val2)
                     and self.__is_operand_compatible(operator, val1)):
                 self.interpreter.error(ErrorType.TYPE_ERROR)
@@ -267,8 +291,6 @@ class Object():
             elif operator == '|':
                 python_operator = 'or'
 
-            print(val1.type, val1.value, type(val1.value),
-                  val2.type, val2.value, type(val2.value))
             python_expression = f"{repr(val1.value)} {python_operator} {repr(val2.value)}"
             eval_res = eval(python_expression)
 
@@ -276,66 +298,6 @@ class Object():
                 eval_res = int(eval_res)
 
             return Value(return_type, eval_res)
-
-    def call_method(self, method_name: str, args: List[Value], actual_me=None):
-        # find the most derived method in current class or super class
-        # check same arg number for overloading
-        method = None
-        if method_name in self.methods and len(args) == len(self.methods[method_name].params_list):
-            print(method_name, "have method!")
-            method = copy.deepcopy(self.methods[method_name])
-
-            for i, arg in enumerate(args):
-                param_var = method.params_list[i]
-
-                if not is_valid_assign(param_var.type, arg.type, arg.value):
-                    method = None
-                    break
-
-        if not method:
-            if self.parent:
-                print(method_name, "check parent!")
-                res = self.parent.call_method(method_name, args, actual_me)
-                return res
-            else:
-                self.interpreter.error(ErrorType.NAME_ERROR)
-
-        if len(args) != len(method.params_list):
-            self.interpreter.error(ErrorType.TYPE_ERROR)
-            return None
-
-        for i, arg in enumerate(args):
-            param_var = method.params_list[i]
-
-            if param_var.name in method.params:
-                self.interpreter.error(ErrorType.NAME_ERROR)
-
-            if param_var.type in primitives:
-                param_var = copy.deepcopy(param_var)
-
-            # print(param_var.type, arg.type, arg.value)
-            if not is_valid_assign(param_var.type, arg.type, arg.value):
-                self.interpreter.error(ErrorType.TYPE_ERROR)
-                return None
-
-            if param_var.type in primitives:
-                param_var.set_val(copy.deepcopy(arg))
-            else:
-                param_var.set_val(arg)
-
-            method.params[param_var.name] = param_var
-
-        res = self.__run_statement(method.body, method, actual_me)
-        if res is None:
-            if method.return_type == "bool":
-                return Value("bool", False)
-            if method.return_type == "int":
-                return Value("int", 0)
-            if method.return_type == "string":
-                return Value("string", "")
-            if method.return_type == "obj":
-                return Value("obj", None)
-        return res
 
     def __run_statement(self, statement: list, method: Method, actual_me=None):
         statement_type, *args = statement
@@ -351,7 +313,7 @@ class Object():
         elif statement_type == self.interpreter.BEGIN_DEF:
             for stmt in args:
                 res = self.__run_statement(stmt, method, actual_me)
-                if res == "return now!" or res is not None:
+                if res is not None:
                     return res
         elif statement_type == self.interpreter.IF_DEF:
             res = self.__run_if_statement(args, method, actual_me)
@@ -377,7 +339,6 @@ class Object():
             # print(arg, arg_val.value if arg_val else None, arg_val.type if arg_val else None, type(arg_val.value))
 
             # convert primitive types to string
-
             if arg_val is None:
                 output += "None"
             else:
@@ -392,8 +353,7 @@ class Object():
 
             # print(arg, arg_val.value if arg_val else None, arg_val.type if arg_val else None, type(arg_val.value))
 
-        print("print: " + output)
-
+        # print("print: " + output)
         self.interpreter.output(output)
 
     def __run_input_int_statement(self, args: list, method: Method):
@@ -424,7 +384,7 @@ class Object():
             method.params[var] = Variable(var, "string", Value(
                 "string", self.interpreter.get_input()))
         elif var in self.fields:
-            if self.fields.type != "string":
+            if self.fields[var].type != "string":
                 self.interpreter.error(ErrorType.TYPE_ERROR)
 
             self.fields[var] = Variable(var, "int", Value(
@@ -437,6 +397,7 @@ class Object():
 
         val_obj = self.__get_val(val, method)
 
+        # get variable object to be set to the value object
         var_obj = None
         for local_var in method.local_vars:
             if var == local_var.name:
@@ -451,38 +412,26 @@ class Object():
             else:
                 self.interpreter.error(ErrorType.NAME_ERROR)
 
-        # print(val_obj.type, val_obj.value)
-        # if val_obj.type != "obj":
-        #     is_same_family = True
-        # else:
-        #     family = self.interpreter.classes[var_obj.type].family
-        #     print(val_obj.value.family[0], family)
-        #     is_same_family = val_obj.type in self.interpreter.classes[var_obj.type].family
-
-        # if not is_same_family:
-        #     self.interpreter.error(ErrorType.TYPE_ERROR)
-
+        # print(var_obj.name, var_obj.type, val_obj.type, val_obj.value)
+        # check if valid set
         if not is_valid_assign(var_obj.type, val_obj.type, val_obj.value):
             self.interpreter.error(ErrorType.TYPE_ERROR)
             return None
 
-        # print(var_obj.type, val_obj.type, val_obj.value)
         var_obj.set_val(val_obj)
-
-        return method.params
 
     def __run_if_statement(self, args: list, method: Method, actual_me=None):
         condition, *statements = args
 
+        # evaluate condition and check if bool
         condition_val = self.__get_val(condition, method)
         if condition_val.type != "bool":
             self.interpreter.error(ErrorType.TYPE_ERROR)
-            return None
 
         res = None
-        if condition_val.value:
+        if condition_val.value:  # run if statement
             res = self.__run_statement(statements[0], method, actual_me)
-        elif len(statements) > 1:
+        elif len(statements) > 1:  # run else statement
             res = self.__run_statement(statements[1], method, actual_me)
 
         return res
@@ -492,17 +441,18 @@ class Object():
 
         res = None
         while True:
+            # evaluate condition and check if bool
             condition_val = self.__get_val(condition, method)
-
             if condition_val.type != "bool":
                 self.interpreter.error(ErrorType.TYPE_ERROR)
-                return None
 
+            # break loop if condition unsatisfied
             if not condition_val.value:
                 break
 
             res = self.__run_statement(statement, method, actual_me)
-            if res == "return now!" or res is not None:
+            # break loop from inside return statement
+            if res is not None:
                 return res
 
         return res
@@ -511,6 +461,7 @@ class Object():
         obj_name, method_name, *method_arg_names = args
         # print("actual_me: " + actual_me.name if actual_me else "")
 
+        # evaluate which object to call
         obj = None
         if isinstance(obj_name, list):
             obj = self.__evaluate(obj_name, method, actual_me).value
@@ -541,28 +492,32 @@ class Object():
         return obj.call_method(method_name, method_args, actual_me if actual_me else obj)
 
     def __run_return_statement(self, args: list, method: Method, actual_me=None):
-        # default return
-        if len(args) == 0:
+        if len(args) == 0:  # default return
+            if method.return_type == "void":
+                # TODO: might need to change back to return nothing
+                return Value("null", None)
             if method.return_type == "bool":
                 return Value("bool", False)
             if method.return_type == "int":
                 return Value("int", 0)
             if method.return_type == "string":
                 return Value("string", "")
-            if method.return_type == "obj":
-                return Value("obj", None)
-            return "return now!"
+            return Value(method.return_type, None)
         elif method.return_type == "void":  # void must not return any value
             self.interpreter.error(ErrorType.TYPE_ERROR)
-            return None
 
         return_val = self.__get_val(args[0], method)
+        # assign value of null to return_type class
+        if return_val.value is None:
+            return_val.type = method.return_type
 
+        # print("returning:")
+        # print(return_val.type, return_val.value)
+
+        # check if return type fits method return type
         if not is_valid_assign(method.return_type, return_val.type, return_val.value):
             self.interpreter.error(ErrorType.TYPE_ERROR)
-            return None
 
-        # print("returning" + str(return_val.value))
         return return_val
 
     def __run_let_statement(self, args: list, method: Method, actual_me=None):
@@ -572,14 +527,19 @@ class Object():
 
         for var in vars:
             var_type, var_name, var_val = var
+
+            # check if duplicate let vars
             if var_name in added_var_names:
                 self.interpreter.error(ErrorType.NAME_ERROR)
-                return None
 
             val_obj = self.__get_val(var_val, method)
+            # assign null value with declared class type
+            if val_obj.type == "null":
+                val_obj.type = var_type
+
+            # check if value fits declared type
             if not is_valid_assign(var_type, val_obj.type, val_obj.value):
                 self.interpreter.error(ErrorType.TYPE_ERROR)
-                return None
 
             method.local_vars.insert(0, Variable(var_name, var_type, val_obj))
             insert_len += 1
@@ -587,7 +547,7 @@ class Object():
 
         for stmt in statements:
             res = self.__run_statement(stmt, method, actual_me)
-            if res == "return now!" or res is not None:
+            if res is not None:
                 return res
 
         for i in range(insert_len):
@@ -642,28 +602,44 @@ class Interpreter(InterpreterBase):
                 if item[0] == self.FIELD_DEF:
                     field_def, field_type, name, val = item
 
+                    # check duplicate field
                     if name in fields:
                         self.error(ErrorType.NAME_ERROR)
 
+                    # check if init value is valid
                     if isinstance(val, list):
                         self.error(ErrorType.TYPE_ERROR)
 
-                    field_val = create_val(val)
-                    valid_assign = field_type == field_val.type or (
-                        field_type not in primitives and field_val.value == None)
+                    field_val = create_val(field_type, val)
+
+                    # check if value fits declared type
+                    valid_assign = field_type == field_val.type
                     if not valid_assign:
                         self.error(ErrorType.TYPE_ERROR)
 
                     fields[name] = Variable(name, field_type, field_val)
+
                 elif item[0] == self.METHOD_DEF:
                     method_def, return_type, name, params, body = item
 
+                    # check duplicate method
                     if name in methods:
                         self.error(ErrorType.NAME_ERROR)
+
+                    # check if return type is valid
+                    valid_return_types = primitives + ['void']
+                    # print(return_type, valid_return_types)
+                    if return_type not in valid_return_types and return_type not in self.classes and return_type != class_name:
+                        self.error(ErrorType.TYPE_ERROR)
 
                     param_vars = []
                     for param in params:
                         param_type, param_name = param
+
+                        # check if param type is valid
+                        if param_type not in primitives and param_type not in self.classes and param_type != class_name:
+                            self.error(ErrorType.TYPE_ERROR)
+
                         param_vars.append(Variable(param_name, param_type))
 
                     methods[name] = Method(name, return_type, param_vars, body)
