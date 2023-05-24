@@ -9,6 +9,12 @@ str_to_bool = {
     'false': False
 }
 primitives = ["bool", "int", "string"]
+default_vals = {
+    "bool": False,
+    "int": 0,
+    "string": "",
+    "obj": None
+}
 
 
 def is_str_format(s: str):
@@ -526,16 +532,21 @@ class Object():
         added_var_names = set()
 
         for var in vars:
-            var_type, var_name, var_val = var
+            var_type, *var_name_and_val = var
+            var_name = var_name_and_val[0]
 
             # check if duplicate let vars
             if var_name in added_var_names:
                 self.interpreter.error(ErrorType.NAME_ERROR)
 
-            val_obj = self.__get_val(var_val, method)
-            # assign null value with declared class type
-            if val_obj.type == "null":
-                val_obj.type = var_type
+            if len(var_name_and_val) == 1:
+                var_val = Value(var_type, default_vals[var_type])
+            else:
+                var_val = var_name_and_val[1]
+                val_obj = self.__get_val(var_val, method)
+                # assign null value with declared class type
+                if val_obj.type == "null":
+                    val_obj.type = var_type
 
             # check if value fits declared type
             if not is_valid_assign(var_type, val_obj.type, val_obj.value):
@@ -600,17 +611,23 @@ class Interpreter(InterpreterBase):
             # interpret each line in class as inherits, field or method
             for item in lines:
                 if item[0] == self.FIELD_DEF:
-                    field_def, field_type, name, val = item
+                    field_def, field_type, *field_name_and_val = item
+                    field_name = field_name_and_val[0]
 
                     # check duplicate field
                     if name in fields:
                         self.error(ErrorType.NAME_ERROR)
 
-                    # check if init value is valid
-                    if isinstance(val, list):
-                        self.error(ErrorType.TYPE_ERROR)
+                    if len(field_name_and_val) == 0:
+                        field_val = Value(field_type, default_vals[field_type])
+                    else:
+                        val = field_name_and_val[1]
 
-                    field_val = create_val(field_type, val)
+                        # check if init value is valid
+                        if isinstance(val, list):
+                            self.error(ErrorType.TYPE_ERROR)
+
+                        field_val = create_val(field_type, val)
 
                     # check if value fits declared type
                     valid_assign = field_type == field_val.type
