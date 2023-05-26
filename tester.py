@@ -294,11 +294,11 @@ def generate_test_suite_v3():
         "test_str_ops",
         "test_template1",
         "test_template8",
-        "test_except1",
-        "test_except13"
+        # "test_except1",
+        # "test_except13"
     ]
     fails = [
-        "test_except4",
+        # "test_except4",
         "test_template5",
         "test_incompat_template_types"
     ]

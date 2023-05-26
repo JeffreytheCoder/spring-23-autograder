@@ -221,6 +221,12 @@ class Object():
         if operator == self.interpreter.NEW_DEF:
             class_name = expression[1]
 
+            if '@' in class_name:
+                t_class_name = class_name.split('@')[0]
+                if t_class_name in self.interpreter.t_classes:
+                    print("NEW adding t_class!")
+                    self.interpreter.add_t_class(class_name)
+
             if class_name not in self.interpreter.classes:
                 self.interpreter.error(ErrorType.TYPE_ERROR)
 
@@ -535,6 +541,10 @@ class Object():
             var_type, *var_name_and_val = var
             var_name = var_name_and_val[0]
 
+            if '@' in var_type and var_type.split('@')[0] in self.interpreter.t_classes:
+                print("let adding t_class!")
+                self.interpreter.add_t_class(var_type)
+
             # check if duplicate let vars
             if var_name in added_var_names:
                 self.interpreter.error(ErrorType.NAME_ERROR)
@@ -572,6 +582,7 @@ class Interpreter(InterpreterBase):
         super().__init__(console_output, inp)
         self.trace_output = trace_output
         self.classes = {}
+        self.t_classes = {}
 
     def run(self, program):
         result, parsed_program = BParser.parse(program)
@@ -598,6 +609,11 @@ class Interpreter(InterpreterBase):
             family = [class_name]
             parent = None
 
+            # deal with template class
+            if class_keyword == "tclass":
+                self.t_classes[class_name] = lines
+                continue
+
             # check if inherits, add super class
             if len(lines) >= 2 and lines[0] == "inherits":
                 parent_name = lines[1]
@@ -615,10 +631,10 @@ class Interpreter(InterpreterBase):
                     field_name = field_name_and_val[0]
 
                     # check duplicate field
-                    if name in fields:
+                    if field_name in fields:
                         self.error(ErrorType.NAME_ERROR)
 
-                    if len(field_name_and_val) == 0:
+                    if len(field_name_and_val) == 1:
                         field_val = Value(field_type, default_vals[field_type])
                     else:
                         val = field_name_and_val[1]
@@ -634,7 +650,8 @@ class Interpreter(InterpreterBase):
                     if not valid_assign:
                         self.error(ErrorType.TYPE_ERROR)
 
-                    fields[name] = Variable(name, field_type, field_val)
+                    fields[field_name] = Variable(
+                        field_name, field_type, field_val)
 
                 elif item[0] == self.METHOD_DEF:
                     method_def, return_type, name, params, body = item
@@ -644,10 +661,13 @@ class Interpreter(InterpreterBase):
                         self.error(ErrorType.NAME_ERROR)
 
                     # check if return type is valid
-                    valid_return_types = primitives + ['void']
-                    # print(return_type, valid_return_types)
-                    if return_type not in valid_return_types and return_type not in self.classes and return_type != class_name:
-                        self.error(ErrorType.TYPE_ERROR)
+                    if '@' in return_type and return_type.split('@')[0] in self.t_classes:
+                        print("class def adding t_class!")
+                        self.add_t_class(return_type)
+                    else:
+                        valid_return_types = primitives + ['void']
+                        if return_type not in valid_return_types and return_type not in self.classes and return_type != class_name:
+                            self.error(ErrorType.TYPE_ERROR)
 
                     param_vars = []
                     for param in params:
@@ -667,3 +687,106 @@ class Interpreter(InterpreterBase):
 
             self.classes[class_name] = Class(
                 self, class_name, parent, family, fields, methods)
+
+    def add_t_class(self, t_class_name_and_params: str):
+        # check if t_class with these types already added
+        if t_class_name_and_params in self.classes:
+            return
+
+        t_class_def = t_class_name_and_params.split('@')
+        t_class_name, *real_params = t_class_def
+
+        # check if template class definition exists
+        if t_class_name not in self.t_classes:
+            self.error(ErrorType.TYPE_ERROR)
+
+        # init fields for class
+        lines = self.t_classes[t_class_name]
+        t_params = lines[0]
+        fields = {}
+        methods = {}
+        family = [t_class_name_and_params]
+        parent = None
+
+        # check if params fit
+        if len(real_params) != len(t_params):
+            self.error(ErrorType.TYPE_ERROR)
+
+        # create t to real params map
+        param_map = {t_class_name + '@' +
+                     '@'.join(t_params): t_class_name_and_params}
+        for i in range(len(real_params)):
+            # check if real param type is valid
+            if real_params[i] not in primitives and real_params[i] not in self.classes:
+                self.error(ErrorType.TYPE_ERROR)
+
+            param_map[t_params[i]] = real_params[i]
+
+        # interpret each line in class as inherits, field or method
+        for item in lines[1:]:
+            if item[0] == self.FIELD_DEF:
+                field_def, t_field_type, *field_name_and_val = item
+                field_name = field_name_and_val[0]
+
+                # get real field type
+                field_type = param_map[t_field_type]
+
+                # check duplicate field
+                if field_name in fields:
+                    self.error(ErrorType.NAME_ERROR)
+
+                # check if has init value, otherwise default
+                if len(field_name_and_val) == 1:
+                    field_val = Value(field_type, default_vals[field_type])
+                else:
+                    val = field_name_and_val[1]
+
+                    # check if init value is valid
+                    if isinstance(val, list):
+                        self.error(ErrorType.TYPE_ERROR)
+
+                    field_val = create_val(field_type, val)
+
+                # check if value fits declared type
+                valid_assign = field_type == field_val.type
+                if not valid_assign:
+                    self.error(ErrorType.TYPE_ERROR)
+
+                fields[field_name] = Variable(
+                    field_name, field_type, field_val)
+
+            elif item[0] == self.METHOD_DEF:
+                method_def, t_return_type, name, params, body = item
+
+                # get real return type
+                if t_return_type == 'void':
+                    return_type = 'void'
+                else:
+                    return_type = param_map[t_return_type]
+
+                # check duplicate method
+                if name in methods:
+                    self.error(ErrorType.NAME_ERROR)
+
+                # check if return type is valid
+                valid_return_types = primitives + ['void']
+                if return_type not in valid_return_types and return_type not in self.classes and return_type != t_class_name_and_params:
+                    self.error(ErrorType.TYPE_ERROR)
+
+                param_vars = []
+                for param in params:
+                    t_param_type, param_name = param
+
+                    # get real param type
+                    param_type = param_map[t_param_type]
+
+                    # check if param type is valid
+                    if param_type not in primitives and param_type not in self.classes and param_type != t_class_name_and_params:
+                        self.error(ErrorType.TYPE_ERROR)
+
+                    param_vars.append(Variable(param_name, param_type))
+
+                methods[name] = Method(name, return_type, param_vars, body)
+
+        self.classes[t_class_name_and_params] = Class(
+            self, t_class_name_and_params, parent, family, fields, methods)
