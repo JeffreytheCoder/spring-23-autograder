@@ -108,6 +108,7 @@ class Object():
         self.methods = copy.deepcopy(class_ref.methods)
 
     def call_method(self, method_name: str, args: List[Value], actual_me=None):
+        print("calling", self.name,  method_name)
         # find the most derived method in current class or super class
         # check same arg number for overloading
         method = None
@@ -118,6 +119,10 @@ class Object():
             # check if all same param, arg types
             for i, arg in enumerate(args):
                 param_var = method.params_list[i]
+
+                # check if arg is error from another call, populate this error
+                if arg.type == "error":
+                    return arg
 
                 if not is_valid_assign(param_var.type, arg.type, arg.value):
                     method = None
@@ -337,6 +342,10 @@ class Object():
             res = self.__run_return_statement(args, method, actual_me)
         elif statement_type == self.interpreter.LET_DEF:
             res = self.__run_let_statement(args, method, actual_me)
+        elif statement_type == self.interpreter.TRY_DEF:
+            res = self.__run_try_statement(args, method, actual_me)
+        elif statement_type == self.interpreter.THROW_DEF:
+            res = self.__run_throw_statement(args, method, actual_me)
         else:
             raise Exception('Invalid statement type')
 
@@ -569,12 +578,35 @@ class Object():
         for stmt in statements:
             res = self.__run_statement(stmt, method, actual_me)
             if res is not None:
+                for i in range(insert_len):
+                    method.local_vars.pop(0)
                 return res
 
         for i in range(insert_len):
             method.local_vars.pop(0)
 
         return None
+
+    def __run_throw_statement(self, args: list, method: Method, actual_me=None):
+        error_msg = self.__get_val(args[0], method)
+
+        if error_msg.type != "string":
+            self.interpreter.error(ErrorType.TYPE_ERROR)
+
+        return Value("error", error_msg)
+
+    def __run_try_statement(self, args: list, method: Method, actual_me=None):
+        try_stmt, catch_stmt = args
+
+        try_res = self.__run_statement(try_stmt, method, actual_me)
+        if try_res is not None and try_res.type == "error":
+            method.local_vars.insert(0, Variable(
+                "exception", try_res.type, try_res.value))
+            catch_res = self.__run_statement(catch_stmt, method, actual_me)
+            method.local_vars.pop(0)
+            return catch_res
+        else:
+            return try_res
 
 
 class Interpreter(InterpreterBase):
