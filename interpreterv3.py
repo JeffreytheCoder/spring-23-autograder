@@ -13,8 +13,14 @@ default_vals = {
     "bool": False,
     "int": 0,
     "string": "",
-    "obj": None
 }
+
+
+def get_default_val(val_type):
+    if val_type in primitives:
+        return Value(val_type, default_vals[val_type])
+    else:
+        return Value(val_type, None)
 
 
 def is_str_format(s: str):
@@ -374,7 +380,7 @@ class Object():
 
             # print(arg, arg_val.value if arg_val else None, arg_val.type if arg_val else None, type(arg_val.value))
 
-        # print("print: " + output)
+        print("print: " + output)
         self.interpreter.output(output)
 
     def __run_input_int_statement(self, args: list, method: Method):
@@ -472,8 +478,11 @@ class Object():
                 break
 
             res = self.__run_statement(statement, method, actual_me)
+            # print('while return:')
+            # print(res)
             # break loop from inside return statement
             if res is not None:
+                # print(res.type, res.value)
                 return res
 
         return res
@@ -559,7 +568,7 @@ class Object():
                 self.interpreter.error(ErrorType.NAME_ERROR)
 
             if len(var_name_and_val) == 1:
-                var_val = Value(var_type, default_vals[var_type])
+                val_obj = get_default_val(var_type)
             else:
                 var_val = var_name_and_val[1]
                 val_obj = self.__get_val(var_val, method)
@@ -589,6 +598,9 @@ class Object():
 
     def __run_throw_statement(self, args: list, method: Method, actual_me=None):
         error_msg = self.__get_val(args[0], method)
+
+        if error_msg.type == "error":
+            return error_msg
 
         if error_msg.type != "string":
             self.interpreter.error(ErrorType.TYPE_ERROR)
@@ -662,12 +674,16 @@ class Interpreter(InterpreterBase):
                     field_def, field_type, *field_name_and_val = item
                     field_name = field_name_and_val[0]
 
+                    # check if field type is valid
+                    # if field_type not in primitives and field_type not in self.classes:
+                    #     self.error(ErrorType.TYPE_ERROR)
+
                     # check duplicate field
                     if field_name in fields:
                         self.error(ErrorType.NAME_ERROR)
 
                     if len(field_name_and_val) == 1:
-                        field_val = Value(field_type, default_vals[field_type])
+                        field_val = get_default_val(field_type)
                     else:
                         val = field_name_and_val[1]
 
@@ -769,7 +785,11 @@ class Interpreter(InterpreterBase):
 
                 # check if has init value, otherwise default
                 if len(field_name_and_val) == 1:
-                    field_val = Value(field_type, default_vals[field_type])
+                    if field_type in primitives:
+                        field_val = Value(
+                            field_type, default_vals[field_type])
+                    else:
+                        field_val = Value(field_type, None)
                 else:
                     val = field_name_and_val[1]
 

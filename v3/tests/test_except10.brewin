@@ -1,0 +1,18 @@
+(class main
+  (field string y)
+  (method void main ()
+    (begin
+      (try
+        (set y (call me foo))
+        (print "the exception is " exception)
+      )
+      (print y)
+    )
+  )
+  (method string foo ()
+    (try
+      (throw "an exception")
+      (return exception)
+    )
+  )
+)

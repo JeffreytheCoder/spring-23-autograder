@@ -1,0 +1,20 @@
+(class Dog 
+  (method void do_nothing ()
+    (print "do_nothing")
+  )
+)
+
+(class main 
+  (field int x)
+  (field string y)
+  (field bool z)
+  (field Dog e)
+  (method void main () 
+    (begin
+      (print x)
+      (print y)
+      (print z)
+      (print e)
+    )
+  )
+)
