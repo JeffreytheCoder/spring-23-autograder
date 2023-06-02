@@ -630,11 +630,11 @@ class Object():
         for stmt in statements:
             res = self.__run_statement(stmt, method, actual_me)
             if res is not None:
-                for i in range(insert_len):
+                for _ in range(insert_len):
                     method.local_vars.pop(0)
                 return res
 
-        for i in range(insert_len):
+        for _ in range(insert_len):
             method.local_vars.pop(0)
 
         return None
@@ -656,7 +656,7 @@ class Object():
         try_res = self.__run_statement(try_stmt, method, actual_me)
         if try_res is not None and try_res.type == "error":
             method.local_vars.insert(0, Variable(
-                "exception", try_res.type, try_res.value))
+                "exception", "string", try_res.value))
             catch_res = self.__run_statement(catch_stmt, method, actual_me)
             method.local_vars.pop(0)
             return catch_res
