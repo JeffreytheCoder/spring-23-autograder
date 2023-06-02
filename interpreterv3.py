@@ -648,17 +648,21 @@ class Object():
         if error_msg.type != "string":
             self.interpreter.error(ErrorType.TYPE_ERROR)
 
-        return Value("error", error_msg)
+        return Value("error", error_msg.value)
 
     def __run_try_statement(self, args: list, method: Method, actual_me=None):
         try_stmt, catch_stmt = args
 
         try_res = self.__run_statement(try_stmt, method, actual_me)
         if try_res is not None and try_res.type == "error":
+            # try_res is "error" type object with "string" type value as the exception msg
             method.local_vars.insert(0, Variable(
-                "exception", "string", try_res.value))
+                "exception", "string", Value("string", try_res.value)))
+
             catch_res = self.__run_statement(catch_stmt, method, actual_me)
+
             method.local_vars.pop(0)
+
             return catch_res
         else:
             return try_res
