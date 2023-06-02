@@ -611,6 +611,8 @@ class Object():
                 val_obj = self.__get_val(var_val, method)
 
                 if val_obj.type == "error":
+                    for i in range(insert_len):
+                        method.local_vars.pop(0)
                     return val_obj
 
                 # assign null value with declared class type
