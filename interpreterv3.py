@@ -249,6 +249,10 @@ class Object():
 
         elif operator == '!':
             val = self.__get_val(expression[1], method)
+
+            if val.type == "error":
+                return val
+
             if val.type != "bool":
                 self.interpreter.error(ErrorType.TYPE_ERROR)
 
@@ -256,6 +260,11 @@ class Object():
         else:
             val1, val2 = self.__get_val(
                 expression[1], method), self.__get_val(expression[2], method)
+
+            if val1.type == "error":
+                return val1
+            if val2.type == "error":
+                return val2
             # print(val1.type, val1.value, val2.type, val2.value)
 
             # compare objects & nulls
@@ -363,6 +372,9 @@ class Object():
 
         for arg in args:
             arg_val = self.__get_val(arg, method)
+
+            if arg_val.type == "error":
+                return arg_val
             # print(arg, arg_val.value if arg_val else None, arg_val.type if arg_val else None, type(arg_val.value))
 
             # convert primitive types to string
@@ -423,6 +435,8 @@ class Object():
         var, val = args
 
         val_obj = self.__get_val(val, method)
+        if val_obj.type == "error":
+            return val_obj
 
         # get variable object to be set to the value object
         var_obj = None
@@ -452,6 +466,9 @@ class Object():
 
         # evaluate condition and check if bool
         condition_val = self.__get_val(condition, method)
+        if condition_val.type == "error":
+            return condition_val
+
         if condition_val.type != "bool":
             self.interpreter.error(ErrorType.TYPE_ERROR)
 
@@ -470,6 +487,10 @@ class Object():
         while True:
             # evaluate condition and check if bool
             condition_val = self.__get_val(condition, method)
+
+            if condition_val.type == "error":
+                return condition_val
+
             if condition_val.type != "bool":
                 self.interpreter.error(ErrorType.TYPE_ERROR)
 
@@ -494,7 +515,12 @@ class Object():
         # evaluate which object to call
         obj = None
         if isinstance(obj_name, list):
-            obj = self.__evaluate(obj_name, method, actual_me).value
+            obj_val = self.__evaluate(obj_name, method, actual_me)
+
+            if obj_val.type == "error":
+                return obj_val
+
+            obj = obj_val.value
         elif obj_name == "me":
             obj = actual_me if actual_me else self
         elif obj_name == "super":
@@ -517,7 +543,14 @@ class Object():
             self.interpreter.error(ErrorType.FAULT_ERROR)
             return None
 
-        method_args = [self.__get_val(arg, method) for arg in method_arg_names]
+        method_args = []
+        for arg in method_arg_names:
+            arg_val = self.__get_val(arg, method)
+
+            if arg_val.type == "error":
+                return arg_val
+
+            method_args.append(arg_val)
 
         return obj.call_method(method_name, method_args, actual_me if actual_me else obj)
 
@@ -537,6 +570,10 @@ class Object():
             self.interpreter.error(ErrorType.TYPE_ERROR)
 
         return_val = self.__get_val(args[0], method)
+
+        if return_val.type == "error":
+            return return_val
+
         # assign value of null to return_type class
         if return_val.value is None:
             return_val.type = method.return_type
@@ -572,6 +609,10 @@ class Object():
             else:
                 var_val = var_name_and_val[1]
                 val_obj = self.__get_val(var_val, method)
+
+                if val_obj.type == "error":
+                    return val_obj
+
                 # assign null value with declared class type
                 if val_obj.type == "null":
                     val_obj.type = var_type
