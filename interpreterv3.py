@@ -675,8 +675,8 @@ class Interpreter(InterpreterBase):
                     field_name = field_name_and_val[0]
 
                     # check if field type is valid
-                    # if field_type not in primitives and field_type not in self.classes:
-                    #     self.error(ErrorType.TYPE_ERROR)
+                    if field_type not in primitives and field_type not in self.classes:
+                        self.error(ErrorType.TYPE_ERROR)
 
                     # check duplicate field
                     if field_name in fields:
@@ -775,6 +775,10 @@ class Interpreter(InterpreterBase):
             if item[0] == self.FIELD_DEF:
                 field_def, t_field_type, *field_name_and_val = item
                 field_name = field_name_and_val[0]
+
+                # check if field type is valid
+                if field_type not in primitives and field_type not in self.classes:
+                    self.error(ErrorType.TYPE_ERROR)
 
                 # get real field type
                 field_type = param_map[t_field_type]
