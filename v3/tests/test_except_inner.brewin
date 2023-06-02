@@ -1,0 +1,13 @@
+(class main
+    (method void main ()
+        (begin
+            (try
+                (try
+                    (throw "Inner Exception")
+                    (print exception)
+                )
+                (print "This should not be printed.")
+            )
+        )
+    )
+)

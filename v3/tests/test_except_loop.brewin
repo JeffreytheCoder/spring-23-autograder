@@ -1,0 +1,16 @@
+(class main
+    (method void main ()
+        (begin
+            (try
+                (while true
+                    (begin
+                        (print "Inside loop")
+                        (throw "Exception in Loop")
+                        (print "This should not be printed.")
+                    )
+                )
+                (print exception)
+            )
+        )
+    )
+)

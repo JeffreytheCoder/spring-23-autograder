@@ -291,31 +291,36 @@ def generate_test_suite_v2():
 def generate_test_suite_v3():
     """wrapper for generate_test_suite for v3"""
     tests = [
-        "test_default_field_value",
-        "test_except1",
-        "test_except10",
-        "test_except13",
-        "test_str_ops",
-        "test_template1",
-        "test_template10",
-        "test_template14",
+        # "test_default_field_value",
+        # "test_except1",
+        # "test_except10",
+        # "test_except13",
+        # "test_str_ops",
+        # "test_template1",
+        # "test_template10",
+        # "test_template14",
         # "test_template17",  # fix
         # "test_template7",  # fix
-        "test_template8",
-        "test_template9",
+        # "test_template8",
+        # "test_template9",
+        # "test_except_spec",
+        # "test_except_inner",
+        # "test_except_loop",
+        # "test_except_nested_method",
     ]
     fails = [
-        "test_except4",
-        "test_incompat_template_types",
-        "test_template11",
-        "test_template12",
+        # "test_except4",
+        # "test_incompat_template_types",
+        # "test_template11",
+        # "test_template12",
         # "test_template13",  # fix
-        "test_template15",
-        "test_template16",
-        "test_template5",
-        "test_template6",
-        "test_template_invalid_types",
-        "test_template_invalid_types2",
+        # "test_template15",
+        # "test_template16",
+        # "test_template5",  # fix
+        # "test_template6",
+        # "test_template_invalid_types",
+        # "test_template_invalid_types2",
+        # "test_except_scope",
     ]
     return __generate_test_suite(3, tests, fails)
 

@@ -1,0 +1,11 @@
+(class main
+    (method void main ()
+        (begin
+            (try
+                (throw "Exception")
+                (print exception)
+            )
+            (print exception)
+        )
+    )
+)

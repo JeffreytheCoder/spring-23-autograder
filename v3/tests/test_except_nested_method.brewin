@@ -1,0 +1,16 @@
+(class main
+    (method void thrower ()
+        (throw "Exception from Method")
+    )
+    (method void caller ()
+        (begin
+            (try
+                (call me thrower)
+                (print exception)
+            )
+        )
+    )
+    (method void main ()
+        (call me caller)
+    )
+)
