@@ -64,6 +64,25 @@ def is_valid_assign(var_type: str, val_type: str, val_value: any):
     return same_declared_types or obj_assign_null or obj_assign_family
 
 
+def parse_t_class(class_name: str, t_param_map: dict(), interpreter) -> str:
+    t_class_name_and_params = class_name.split('@')
+    t_class_name = t_class_name_and_params[0]
+
+    if t_class_name in interpreter.t_classes:
+        t_params = t_class_name_and_params[1:]
+
+        # get real t_class param
+        for i, t_param in enumerate(t_params):
+            if t_param in t_param_map:
+                t_params[i] = t_param_map[t_param]
+
+        class_name = t_class_name + '@' + '@'.join(t_params)
+
+        return class_name
+    else:
+        interpreter.error(ErrorType.TYPE_ERROR)
+
+
 class Value():
     def __init__(self, type: str, value: any):
         self.type = type
@@ -251,10 +270,14 @@ class Object():
             class_name = expression[1]
 
             if '@' in class_name:
-                t_class_name = class_name.split('@')[0]
-                if t_class_name in self.interpreter.t_classes:
-                    print("NEW adding t_class!")
-                    self.interpreter.add_t_class(class_name)
+                parsed_t_class = parse_t_class(
+                    class_name, self.t_type_map, self.interpreter)
+
+                if parsed_t_class not in self.interpreter.classes:
+                    self.interpreter.add_t_class(parsed_t_class)
+
+            if class_name in self.t_type_map:
+                class_name = self.t_type_map[class_name]
 
             if class_name not in self.interpreter.classes:
                 self.interpreter.error(ErrorType.TYPE_ERROR)
@@ -625,9 +648,13 @@ class Object():
             var_type, *var_name_and_val = var
             var_name = var_name_and_val[0]
 
-            if '@' in var_type and var_type.split('@')[0] in self.interpreter.t_classes:
+            if '@' in var_type:
                 print("let adding t_class!")
-                self.interpreter.add_t_class(var_type)
+                parsed_t_class = parse_t_class(
+                    var_type, self.t_type_map, self.interpreter)
+
+                if parsed_t_class not in self.interpreter.classes:
+                    self.interpreter.add_t_class(parsed_t_class)
 
             if var_type in self.t_type_map:
                 var_type = self.t_type_map[var_type]
@@ -844,6 +871,7 @@ class Interpreter(InterpreterBase):
         param_map = {t_class_name + '@' +
                      '@'.join(t_params): t_class_name_and_params}
         for i in range(len(real_params)):
+            # print("real_param: " + real_params[i])
             # check if real param type is valid
             if real_params[i] not in primitives and real_params[i] not in self.classes:
                 self.error(ErrorType.TYPE_ERROR)
@@ -856,8 +884,18 @@ class Interpreter(InterpreterBase):
                 field_def, t_field_type, *field_name_and_val = item
                 field_name = field_name_and_val[0]
 
+                # check if the field type is another template class
+                if '@' in t_field_type:
+                    field_type = parse_t_class(
+                        t_field_type, param_map, self)
+
+                    if field_type not in self.classes:
+                        self.add_t_class(field_type)
                 # get real field type
-                field_type = param_map[t_field_type]
+                elif t_field_type in param_map:
+                    field_type = param_map[t_field_type]
+                else:
+                    field_type = t_field_type
 
                 # check duplicate field
                 if field_name in fields:
@@ -890,8 +928,12 @@ class Interpreter(InterpreterBase):
             elif item[0] == self.METHOD_DEF:
                 method_def, t_return_type, name, params, body = item
 
-                # get real return type
-                if t_return_type in param_map:
+                # check if the field type is another template class
+                if '@' in t_return_type:
+                    return_type = parse_t_class(
+                        t_return_type, param_map, self)
+                # get real field type
+                elif t_return_type in param_map:
                     return_type = param_map[t_return_type]
                 else:
                     return_type = t_return_type
