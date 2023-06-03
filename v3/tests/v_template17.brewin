@@ -1,0 +1,34 @@
+# NOTE I AM GOING TO CLARIFY WITH TAs AND CAREY ABOUT IF THIS IS ALLOWED (Overwriting primitives)!
+
+(tclass MyTemplatedClass (int bool)
+  (field int some_shape)
+  (field bool some_animal)
+  	  (method void act ((int s) (bool a))
+          (let ((int s) (bool d))
+            (print "Shape's area: " s)
+            (print "Animal's name: " d)
+          )
+        ) 
+      )
+
+
+(class Square
+  (field int side 10)
+  (method int get_area () (return (* side side)))
+)
+
+(class Dog
+  (field string name "koda")
+  (method string get_name () (return name))
+)
+
+(class main
+  (method void main ()
+    (let ((Square s) (Dog d) (MyTemplatedClass@Square@Dog t))
+      (set s (new Square))
+      (set d (new Dog))
+      (set t (new MyTemplatedClass@Square@Dog))
+      (call t act s d)
+    )
+  )
+)

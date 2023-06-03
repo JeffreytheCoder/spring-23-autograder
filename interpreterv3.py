@@ -174,6 +174,19 @@ class Object():
             method.params[param_var.name] = param_var
 
         res = self.__run_statement(method.body, method, actual_me)
+        if not res:
+            if method.return_type == "void":
+                # TODO: might need to change back to return nothing
+                return Value("null", None)
+            if method.return_type == "bool":
+                return Value("bool", False)
+            if method.return_type == "int":
+                print(method.name + "returning:")
+                print("int 0")
+                return Value("int", 0)
+            if method.return_type == "string":
+                return Value("string", "")
+            return Value(method.return_type, None)
         return res
 
     def __get_val(self, var: any, method: Method) -> Value:
@@ -260,12 +273,16 @@ class Object():
         else:
             val1, val2 = self.__get_val(
                 expression[1], method), self.__get_val(expression[2], method)
+            print(val1, val2)
+            if val1:
+                print(val1.type, val1.value)
+            if val2:
+                print(val2.type, val2.value)
 
-            if val1.type == "error":
+            if val1 and val1.type == "error":
                 return val1
-            if val2.type == "error":
+            if val2 and val2.type == "error":
                 return val2
-            # print(val1.type, val1.value, val2.type, val2.value)
 
             # compare objects & nulls
             if (val1.type not in primitives and val2.type not in primitives):
@@ -335,13 +352,13 @@ class Object():
         statement_type, *args = statement
         res = None
         if statement_type == self.interpreter.PRINT_DEF:
-            self.__run_print_statement(args, method)
+            res = self.__run_print_statement(args, method)
         elif statement_type == self.interpreter.INPUT_INT_DEF:
-            self.__run_input_int_statement(args, method)
+            res = self.__run_input_int_statement(args, method)
         elif statement_type == self.interpreter.INPUT_STRING_DEF:
-            self.__run_input_str_statement(args, method)
+            res = self.__run_input_str_statement(args, method)
         elif statement_type == self.interpreter.SET_DEF:
-            self.__run_set_statement(args, method)
+            res = self.__run_set_statement(args, method)
         elif statement_type == self.interpreter.BEGIN_DEF:
             for stmt in args:
                 res = self.__run_statement(stmt, method, actual_me)
@@ -372,6 +389,7 @@ class Object():
 
         for arg in args:
             arg_val = self.__get_val(arg, method)
+            # print(arg_val.type, arg_val.value)
 
             if arg_val.type == "error":
                 return arg_val
@@ -562,6 +580,8 @@ class Object():
             if method.return_type == "bool":
                 return Value("bool", False)
             if method.return_type == "int":
+                print(method.name + "returning:")
+                print("int 0")
                 return Value("int", 0)
             if method.return_type == "string":
                 return Value("string", "")
@@ -572,6 +592,8 @@ class Object():
         return_val = self.__get_val(args[0], method)
 
         if return_val.type == "error":
+            print(method.name + "returning:")
+            print(return_val.type, return_val.value)
             return return_val
 
         # assign value of null to return_type class
@@ -585,6 +607,8 @@ class Object():
         if not is_valid_assign(method.return_type, return_val.type, return_val.value):
             self.interpreter.error(ErrorType.TYPE_ERROR)
 
+        print(method.name + "returning:")
+        print(return_val.type, return_val.value)
         return return_val
 
     def __run_let_statement(self, args: list, method: Method, actual_me=None):
@@ -654,6 +678,7 @@ class Object():
         try_stmt, catch_stmt = args
 
         try_res = self.__run_statement(try_stmt, method, actual_me)
+        # print(try_res.type, try_res.value)
         if try_res is not None and try_res.type == "error":
             # try_res is "error" type object with "string" type value as the exception msg
             method.local_vars.insert(0, Variable(

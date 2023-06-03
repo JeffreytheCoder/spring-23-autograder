@@ -1,0 +1,14 @@
+(tclass Foo (field_type)
+  (method void chatter ((field_type x)) 
+    (call x quack)))
+
+(class Duck
+  (method void quack () 
+    (print "quack")))
+(class main
+  (field Foo@Duck t1)
+    (method void main () 
+      (begin
+        (set t1 (new Foo@Duck))
+        (call t1 chatter 5) #generates a name error
+)))

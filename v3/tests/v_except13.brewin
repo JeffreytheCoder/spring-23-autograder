@@ -1,0 +1,64 @@
+(class Robot 
+ (field int c 0)
+ 
+(method int foo () 
+  (begin
+   (set c (+ c 1))
+    (call me foo2)
+   )
+ )
+ 
+  (method int foo2 () 
+  (begin
+    (call me foo3)
+   )
+ )
+ 
+    (method string hee () 
+  (begin
+    (throw "heehee")
+   )
+ )
+ 
+  (method bool errorSnek () 
+  (begin
+    (throw (+ "snek" (call me hee)))
+   )
+ )
+ 
+ 
+ (method int foo3 () 
+  (begin
+                 (try 
+            (while (call me errorSnek)
+              (begin 
+                (if (== 5 x) (throw "bah") (print "nay")) 
+                (set x (+ x 1))
+              )
+            )
+            (print exception))
+
+   )
+ )
+ (method int foo4 () 
+  (begin
+  
+   (throw "beh")
+   )
+ )
+)
+
+(class Dog inherits Robot
+  (method void m () ())
+)
+(class main
+
+ (method void main ()
+  (begin
+    (try
+       (begin (print "abc") (print (+ 1 (call(new Dog) foo)))  (print "def"))
+       (print exception)
+    )
+  )
+ )
+)

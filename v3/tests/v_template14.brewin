@@ -1,0 +1,26 @@
+(tclass Foo (field_type field_type1 field_type2 field_type3 field_type4)
+(field field_type field_type12 )
+(field field_type4 field_type8)
+
+(field field_type1 field_type1)
+(field field_type2 field_type2)
+(field field_type3 field_type3)
+
+(method void foo ((field_type field_type6))
+(begin  (set field_type8 field_type6)
+ (print field_type12 field_type8 field_type1 field_type2 field_type3))))
+
+(class Duck 
+  (method void quack ()
+    (print "nay")
+  )
+)
+
+(class main
+(method void main ()
+(begin
+
+(call (new Foo@int@string@bool@Duck@int) foo 21)
+
+
+)))

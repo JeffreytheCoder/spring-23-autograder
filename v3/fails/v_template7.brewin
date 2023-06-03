@@ -1,0 +1,21 @@
+(tclass Foo (field_type field2)
+  (method void chatter ((field_type x)) 
+    (call x quack)         # line A
+  )
+  (method bool compare_to_5 ((field_type x)) 
+    (return (== x 5))
+  )
+)
+(class Duck
+ (method void quack () (print "quack"))
+)
+
+      (class main
+        (field Foo@Duck@string t1)
+        (field Foo@int@string t2)
+        (method void main () 
+          (begin
+            (print(== (new Foo@Duck) null))
+          )
+        )
+      )

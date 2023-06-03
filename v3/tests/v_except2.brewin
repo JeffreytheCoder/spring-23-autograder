@@ -1,0 +1,35 @@
+(class main
+ (field int c 0)
+ 
+ (method int foo () 
+  (begin
+   (set c (+ c 1))
+    (call me foo2)
+   )
+ )
+ 
+  (method int foo2 () 
+  (begin
+    (call me foo3)
+   )
+ )
+ 
+   (method int foo3 () 
+  (begin
+    (call me foo4)
+   )
+ )
+ (method int foo4 () 
+  (begin
+   (throw "beh")
+   )
+ )
+ (method void main ()
+  (begin
+    (try
+       (begin (print "abc") (print (+ 1 (call me foo)))  (print "def"))
+       (print exception)
+    )
+  )
+ )
+)

@@ -1,0 +1,63 @@
+(tclass Foo2 (field_type field2)
+  (method field2 field_type2 ((field2 field2)) 
+    (print field2)
+  )
+)
+
+(tclass Foo (field_type field2)
+  (field Foo2@field_type@field2 field2 null)
+  (field Foo2@field_type@field2 field_type null)
+
+  (method field2 chatter ((field_type x)) 
+    (return true)
+  )
+  (method string field_type () 
+    (throw "snek3")
+  )
+  (method int sneaky () 
+    (return (call me field_type))
+  )
+  (method Foo@field_type@field2 getObj () 
+    (return (new Foo@field_type@field2))
+  )
+  (method bool coolio ((Foo@field_type@field2 x) (field2 field3)) 
+    (begin
+      (set field2 (new Foo2@string@int))
+      (set field_type field2)
+      (print (call field2 field_type2 field3))
+      (try
+          (let ((int z 1) (Foo@field_type@field2 field_type))
+            (begin 
+              (set field_type (new Foo@field_type@field2))
+              (try
+                (return (== field_type (call me field_type)))
+                (return false)
+                )
+                (return true)
+              )
+            )
+          (print exception)
+      )
+      (return true)
+    )
+  )
+)
+
+(class Duck
+ (method void quack () (throw "quack"))
+  (method void quacker () (throw "quacker"))
+  (method void quacker2 () (print "quo"))
+
+)
+
+      (class main
+        #(field Foo@string@int t1 null)
+        (field Foo@Duck@string t2 null)
+
+        (method void main () 
+          (let ((Foo@string@int t1) (Foo@Duck@int t2))
+             (set t1 (new Foo@string@int))
+             (print (call t1 coolio (call t1 getObj) 25))
+          )
+        )
+      )

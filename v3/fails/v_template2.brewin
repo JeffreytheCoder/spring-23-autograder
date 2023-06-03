@@ -1,0 +1,15 @@
+(tclass Foo (field_type)
+  (method void chatter ((field_type x)) 
+    (call x quack))) #error generated here
+
+(class Duck
+  (method void quack () 
+    (print "quack")))
+(class main
+  (field Foo@Duck t1)
+    (method void main () 
+      (begin
+        (set t1 (new Foo@int)) #changed type of t1
+        (call t1 chatter 5) 
+#generates a type error, mismatch between Foo@Duck and Foo@int
+)))

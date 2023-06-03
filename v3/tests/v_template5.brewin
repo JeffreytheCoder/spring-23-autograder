@@ -1,0 +1,27 @@
+(tclass Foo (field_type field2)
+  (method field2 chatter ((field_type x)) 
+    (return true)
+  )
+  (method bool coolio ((field_type x)) 
+    (return (== x 5))
+  )
+)
+
+(class Duck
+ (method void quack () (print "quack"))
+)
+
+      (class main
+        #(field Foo@Duck@int t1 null)
+        (field Foo@Duck@string t2 null)
+
+        (method void main () 
+          (let ((Foo@Duck@int t1) (Foo@Duck@int t2))
+             (set t1 (new Foo@Duck@int))
+             (print (== t1 null))
+             (print (== t1 t1))
+             (print (== t1 t2))
+
+          )
+        )
+      )

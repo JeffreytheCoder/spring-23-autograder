@@ -1,0 +1,50 @@
+(tclass Foo (field_type field2)
+  (method field2 chatter ((field_type x)) 
+    (return true)
+  )
+  (method bool coolio ((field_type x)) 
+    (begin
+      (try
+        (call x quack)
+        (begin 
+          (try 
+            (call x quacker)
+            (begin 
+                (print exception)
+                  (let ((int z 0))
+                    (begin 
+                      (try 
+                        (call x quacker2)
+                        (begin (print exception) )
+                      )
+                      (print exception)
+                    )
+                  )
+             )
+          )
+          (print exception)
+        )
+      )
+      (return true)
+    )
+  )
+)
+
+(class Duck
+ (method void quack () (throw "quack"))
+  (method void quacker () (throw "quacker"))
+  (method void quacker2 () (print "quo"))
+
+)
+
+      (class main
+        #(field Foo@Duck@int t1 null)
+        (field Foo@Duck@string t2 null)
+
+        (method void main () 
+          (let ((Foo@Duck@int t1) (Foo@Duck@int t2))
+             (set t1 (new Foo@Duck@int))
+             (print (call t1 coolio (new Duck)))
+          )
+        )
+      )
