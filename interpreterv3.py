@@ -91,13 +91,14 @@ class Method():
 
 
 class Class():
-    def __init__(self, interpreter, name: str, parent, family: List[str], fields: dict(), methods: dict()):
+    def __init__(self, interpreter, name: str, parent, family: List[str], fields: dict(), methods: dict(), t_type_map: dict() = {}):
         self.interpreter = interpreter
         self.name = name
         self.parent = parent
         self.family = family
         self.fields = fields
         self.methods = methods
+        self.t_type_map = t_type_map
 
     def instantiate_object(self):
         obj = Object(self)
@@ -112,6 +113,7 @@ class Object():
         self.family = copy.deepcopy(class_ref.family)
         self.fields = copy.deepcopy(class_ref.fields)
         self.methods = copy.deepcopy(class_ref.methods)
+        self.t_type_map = copy.deepcopy(class_ref.t_type_map)
 
     def call_method(self, method_name: str, args: List[Value], actual_me=None):
         print("calling", self.name,  method_name)
@@ -627,6 +629,9 @@ class Object():
                 print("let adding t_class!")
                 self.interpreter.add_t_class(var_type)
 
+            if var_type in self.t_type_map:
+                var_type = self.t_type_map[var_type]
+
             # check if duplicate let vars
             if var_name in added_var_names:
                 self.interpreter.error(ErrorType.NAME_ERROR)
@@ -884,7 +889,6 @@ class Interpreter(InterpreterBase):
 
             elif item[0] == self.METHOD_DEF:
                 method_def, t_return_type, name, params, body = item
-                print(param_map, t_return_type)
 
                 # get real return type
                 if t_return_type in param_map:
@@ -917,4 +921,4 @@ class Interpreter(InterpreterBase):
                 methods[name] = Method(name, return_type, param_vars, body)
 
         self.classes[t_class_name_and_params] = Class(
-            self, t_class_name_and_params, parent, family, fields, methods)
+            self, t_class_name_and_params, parent, family, fields, methods, param_map)

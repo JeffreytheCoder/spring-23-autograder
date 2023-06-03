@@ -30,8 +30,10 @@
                                 (if (== y 0)
                                     #(set x (call me bar))
                                     (while (call me bar)
-                                      (print "The exception says: ")
-                                      (print "X is false")
+                                        (begin
+                                            (print "The exception says: ")
+                                            (print "X is false")
+                                        )
                                     )
                                 )
                             )
