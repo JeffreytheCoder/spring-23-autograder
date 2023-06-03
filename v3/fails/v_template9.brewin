@@ -13,7 +13,7 @@
 
       (class main
         (field Foo@Duck t1)
-        (field Foo@int t2)
+        #(field Foo@int t2)
         (method void main () 
           (begin
              (set t1 (new Foo@Duck))	# works fine

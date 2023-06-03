@@ -2,7 +2,7 @@
   (method field2 chatter ((field_type x)) 
     (return true)
   )
-  (method bool compare_to_5 ((field_type x) (field_tye x)) 
+  (method bool compare_to_5 ((field_type x) (field_type x)) 
     (return (== x 5))
   )
 )

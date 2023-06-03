@@ -358,6 +358,7 @@ class Object():
 
     def __run_statement(self, statement: list, method: Method, actual_me=None):
         statement_type, *args = statement
+        print(statement_type)
         res = None
         if statement_type == self.interpreter.PRINT_DEF:
             res = self.__run_print_statement(args, method)
@@ -578,6 +579,8 @@ class Object():
 
             method_args.append(arg_val)
 
+        print("calling...", obj.name, method_name)
+
         return obj.call_method(method_name, method_args, actual_me if actual_me else obj)
 
     def __run_return_statement(self, args: list, method: Method, actual_me=None):
@@ -760,6 +763,10 @@ class Interpreter(InterpreterBase):
                     # check if field type is valid
                     # if field_type not in primitives and field_type not in self.classes:
                     #     self.error(ErrorType.TYPE_ERROR)
+
+                    if '@' in field_type and field_type.split('@')[0] in self.t_classes:
+                        print("class def adding t_class!")
+                        self.add_t_class(field_type)
 
                     # check duplicate field
                     if field_name in fields:
