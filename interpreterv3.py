@@ -174,19 +174,22 @@ class Object():
             method.params[param_var.name] = param_var
 
         res = self.__run_statement(method.body, method, actual_me)
-        if not res:
-            if method.return_type == "void":
-                # TODO: might need to change back to return nothing
-                return Value("null", None)
-            if method.return_type == "bool":
-                return Value("bool", False)
-            if method.return_type == "int":
-                print(method.name + "returning:")
-                print("int 0")
-                return Value("int", 0)
-            if method.return_type == "string":
-                return Value("string", "")
-            return Value(method.return_type, None)
+        if not res and method.return_type != "void":
+            # if method.return_type == "void":
+            #     # TODO: might need to change back to return nothing
+            #     return Value("null", None)
+            # if method.return_type == "bool":
+            #     return Value("bool", False)
+            # if method.return_type == "int":
+            #     print(method.name + "returning:")
+            #     print("int 0")
+            #     return Value("int", 0)
+            # if method.return_type == "string":
+            #     return Value("string", "")
+            # return Value(method.return_type, None)
+            res = self.__run_return_statement([], method, actual_me)
+            print("default return:")
+            print(res.type, res.value)
         return res
 
     def __get_val(self, var: any, method: Method) -> Value:
@@ -881,12 +884,13 @@ class Interpreter(InterpreterBase):
 
             elif item[0] == self.METHOD_DEF:
                 method_def, t_return_type, name, params, body = item
+                print(param_map, t_return_type)
 
                 # get real return type
-                if t_return_type == 'void':
-                    return_type = 'void'
-                else:
+                if t_return_type in param_map:
                     return_type = param_map[t_return_type]
+                else:
+                    return_type = t_return_type
 
                 # check duplicate method
                 if name in methods:

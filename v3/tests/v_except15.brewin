@@ -37,14 +37,14 @@
 
 )
 
-      (class main
-        #(field Foo@Duck@int t1 null)
-        (field Foo@Duck@string t2 null)
+(class main
+  #(field Foo@Duck@int t1 null)
+  (field Foo@Duck@string t2 null)
 
-        (method void main () 
-          (let ((Foo@Duck@int t1) (Foo@Duck@int t2))
-             (set t1 (new Foo@Duck@int))
-             (print (call t1 coolio (new Duck)))
-          )
-        )
-      )
+  (method void main () 
+    (let ((Foo@Duck@int t1) (Foo@Duck@int t2))
+        (set t1 (new Foo@Duck@int))
+        (print (call t1 coolio (new Duck)))
+    )
+  )
+)
